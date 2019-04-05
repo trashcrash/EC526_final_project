@@ -22,10 +22,10 @@ double GetResRoot(double *phi, double *res, int lev, param p);
 
 int main() {  
     FILE* output;
-    output = fopen("trash.dat", "w");
+    output = fopen("result.dat", "w");
     double *phi[20], *res[20];
     param p;
-    int i,lev;
+    int i, j, lev;
   
     // Initialize parameters
     p.Lmax = 7;
@@ -70,7 +70,6 @@ int main() {
     int n_per_lev = 10;                             // Iterate 10 times for each level
     resmag = GetResRoot(phi[0], res[0], 0, p);
     printf("At the %d cycle the mag residue is %g \n",ncycle,resmag);
-    fprintf(output, "%d\t%.17f\n", ncycle, resmag);
  
     // while(resmag > 0.00001 && ncycle < 10000)
     while (resmag > RESGOAL) { 
@@ -99,13 +98,15 @@ int main() {
         }
         resmag = GetResRoot(phi[0], res[0], 0, p);
         printf("At the %d cycle the mag residue is %g \n",ncycle,resmag);
-        fprintf(output, "%d\t%.17f\n", ncycle, resmag);
     }
-    /*
+    
     for (i = 0; i < p.N; i++) {
-        printf("%f\t", phi[0][i]);
+        for (j = 0; j < p.N; j++) {
+            fprintf(output, "%f\t", phi[0][i*p.N+j]);
+        }
+        fprintf(output, "\n");
     }
-    */
+    
     fclose(output);
     return 0;
 }
@@ -119,13 +120,13 @@ void relax(double *phi, double *res, int lev, int niter, param p) {
     for (i = 0; i < niter; i++) {   
         for (x = 1; x < L-1; x++)
             for (y = 1; y < L-1; y++)
-                tmp[x-1+(y-1)*(L-2)] = 0.5*(res[x + y*L] 
-                            + p.scale[lev] * (phi[x+1 + y*L] + phi[x-1 + y*L] 
-                            + phi[x + (y+1)*L] + phi[x + (y-1)*L])+phi[x + y*L]);
+                tmp[y-1+(x-1)*(L-2)] = 0.5*(res[y + x*L] 
+                            + p.scale[lev] * (phi[y+1 + x*L] + phi[y-1 + x*L] 
+                            + phi[y + (x+1)*L] + phi[y + (x-1)*L])+phi[y + x*L]);
                 // a coarse phi is the error of a fine phi
         for (x = 1; x < L-1; x++)
             for (y = 1; y < L-1; y++) 
-                phi[x + y*L] = tmp[x-1 + (y-1)*(L-2)];
+                phi[y + x*L] = tmp[y-1 + (x-1)*(L-2)];
     }
     free(tmp);
     return;
