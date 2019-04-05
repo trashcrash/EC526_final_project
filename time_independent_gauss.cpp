@@ -124,21 +124,15 @@ int main() {
 void relax(double *phi, double *res, int lev, int niter, param p) {
     int i, x, y;
     int L;
-    double* tmp;
-    tmp = (double*)malloc((p.size[lev]-2)*(p.size[lev]-2)*sizeof(double));
     L  = p.size[lev];
     for (i = 0; i < niter; i++) {   
         for (x = 1; x < L-1; x++)
             for (y = 1; y < L-1; y++)
-                tmp[y-1+(x-1)*(L-2)] = 0.5*(res[y + x*L] 
+                phi[y + x*L] = res[y + x*L] 
                             + p.scale[lev] * (phi[y+1 + x*L] + phi[y-1 + x*L] 
-                            + phi[y + (x+1)*L] + phi[y + (x-1)*L])+phi[y + x*L]);
+                            + phi[y + (x+1)*L] + phi[y + (x-1)*L]);
                 // a coarse phi is the error of a fine phi
-        for (x = 1; x < L-1; x++)
-            for (y = 1; y < L-1; y++) 
-                phi[y + x*L] = tmp[y-1 + (x-1)*(L-2)];
     }
-    free(tmp);
     return;
 }
 
