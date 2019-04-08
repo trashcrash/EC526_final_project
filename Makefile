@@ -4,17 +4,19 @@
 #============================================================
 TARGET1 = time_dependent
 TARGET2 = time_dependent_gauss
+TARGET3 = time_dependent_v
 
-C_SOURCES = time_dependent.cpp time_dependent_gauss.cpp
+C_SOURCES = time_dependent.cpp time_dependent_gauss.cpp time_dependent_v.cpp
 C_OBJS1 = time_dependent.o
 C_OBJS2 = time_dependent_gauss.o
+C_OBJS3 = time_dependent_v.o
 MY_INCLUDES = 
 
 CCX = g++
 CXXFLAGS = -g -O2  $(INC)
 
 #============================================================
-all: $(TARGET1)	$(TARGET2)
+all: $(TARGET1)	$(TARGET2) $(TARGET3)
 
 .o:.cpp	$(MY_INCLUDES)
 	$(CCX)  -c  $(CXXFLAGS) $<  
@@ -25,6 +27,9 @@ $(TARGET1) :   $(C_OBJS1)
 $(TARGET2) :   $(C_OBJS2)
 	$(CCX) $(CXXFLAGS)  $^ $(LIBDIRS)  -o $@
 
+$(TARGET3) :   $(C_OBJS3)
+	$(CCX) $(CXXFLAGS)  $^ $(LIBDIRS)  -o $@
+
 # Implicit rules: $@ = target name, $< = first prerequisite name, $^ = name of all prerequisites 
 #============================================================
 
@@ -33,6 +38,6 @@ ALL_SOURCES = Makefile $(C_SOURCES) $(MY_INCLUDES)
 NOTES =
 
 clean:
-	rm -f $(TARGET1) $(C_OBJS1) $(TARGET2) $(C_OBJS2) core  *~
+	rm -f $(TARGET1) $(C_OBJS1) $(TARGET2) $(C_OBJS2) $(TARGET3) $(C_OBJS3) core  *~
 
 
