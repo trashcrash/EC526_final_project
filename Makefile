@@ -2,12 +2,12 @@
 .SUFFIXES: .o .cpp
 
 #============================================================
-TARGET1 = time_independent
-TARGET2 = time_independent_gauss
+TARGET1 = time_dependent
+TARGET2 = time_dependent_gauss
 
-C_SOURCES = time_independent.cpp time_independent_gauss.cpp
-C_OBJS1 = time_independent.o
-C_OBJS2 = time_independent_gauss.o
+C_SOURCES = time_dependent.cpp time_dependent_gauss.cpp
+C_OBJS1 = time_dependent.o
+C_OBJS2 = time_dependent_gauss.o
 MY_INCLUDES = 
 
 CCX = g++
