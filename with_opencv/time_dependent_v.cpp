@@ -8,7 +8,7 @@ using namespace cv;                                 // opencv
 
 #define RESGOAL 1E-6
 #define NLEV 0                                      // If 0, only one level
-#define PERIOD 1000
+#define PERIOD 500
 #define PI 3.141592653589793
 #define TSTRIDE 10
 #define N_PER_LEV 10                                // Iterate 10 times for each level
@@ -99,7 +99,7 @@ int main() {
         // Source varies with time
         if (resmag < RESGOAL) {
             t += 1;
-            res[0][p.N/2 + (p.N/2)*p.N] = 1.0*TSTRIDE*p.scale*(1+sin(2.0*PI*t/(PERIOD/10)));
+            res[0][p.N/2 + (p.N/2)*p.N] = 1.0*TSTRIDE*p.scale*(1+sin(2.0*PI*t/(PERIOD/5)));
             ncycle = 0;
             for (lev = 0; lev < p.Lmax+1; lev++) {
                 for (i = 0; i < p.size[lev]*p.size[lev]; i++) {
