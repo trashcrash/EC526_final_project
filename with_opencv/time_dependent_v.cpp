@@ -7,8 +7,8 @@
 using namespace cv;                                 // opencv
 
 #define RESGOAL 1E-6
-#define NLEV 7                                      // If 0, only one level
-#define PERIOD 500
+#define NLEV 0                                      // If 0, only one level
+#define PERIOD 1000
 #define PI 3.141592653589793
 #define TSTRIDE 10
 #define N_PER_LEV 10                                // Iterate 10 times for each level
@@ -33,11 +33,21 @@ int main() {
     double *phi[20], *res[20], *phi_old[20];
     param p;
     int i, j, lev;
-  
+
     // Initialize parameters
     p.Lmax = 7;
     p.N = 2*(int)pow(2,p.Lmax)+2;
     p.m_square = 0.0;                                     // Scaling parameter, a small number
+
+    Size frame_size(p.N, p.N);
+    int frames_per_second = 30;
+    VideoWriter oVideoWriter("./MyVideo.mp4", CV_FOURCC('G','R','E','Y'), frames_per_second, frame_size, false);
+    if (oVideoWriter.isOpened() == false) 
+    {
+        std::cout << "Cannot save the video to a file" << std::endl;
+        std::cin.get(); //wait for any key press
+        return -1;
+    }
 
     // Exception control
     if (NLEV > p.Lmax) { 
@@ -89,16 +99,18 @@ int main() {
         // Source varies with time
         if (resmag < RESGOAL) {
             t += 1;
-            res[0][p.N/2 + (p.N/2)*p.N] = 3.0*TSTRIDE*p.scale*(1+sin(2.0*PI*t/(PERIOD/10)));
+            res[0][p.N/2 + (p.N/2)*p.N] = 1.0*TSTRIDE*p.scale*(1+sin(2.0*PI*t/(PERIOD/10)));
             ncycle = 0;
             for (lev = 0; lev < p.Lmax+1; lev++) {
                 for (i = 0; i < p.size[lev]*p.size[lev]; i++) {
                     phi_old[lev][i] = phi[lev][i];
                 }
             }
-            image = Mat(p.size[0], p.size[0], CV_64F, phi[0]);                  // opencv
+            image = Mat(p.size[0], p.size[0], CV_64FC1, phi[0]);                  // opencv
+            image.convertTo(image, CV_8UC1, 255.0);
+            oVideoWriter.write(image); 
             imshow("test", image);                                              // opencv
-            waitKey(25);                                                        // opencv 25ms per frame
+            waitKey(1);                                                        // opencv 25ms per frame
         }
     }
     
@@ -111,7 +123,7 @@ int main() {
         fprintf(output, "\n");
     }
     */
-    
+    oVideoWriter.release();
     return 0;
 }
 
