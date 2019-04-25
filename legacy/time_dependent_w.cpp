@@ -136,10 +136,10 @@ void relax(double *phi, double *phi_old, double *res, int lev, param p) {
     for (i = 0; i < N_PER_LEV; i++) {   
         for (x = 1; x < L-1; x++)
             for (y = 1; y < L-1; y++)
-                tmp[y-1+(x-1)*(L-2)] = res[y + x*L]
+                tmp[y-1+(x-1)*(L-2)] = 0.5*(res[y + x*L]
                             + TSTRIDE*p.scale*(phi[y+1 + x*L] + phi[y-1 + x*L] 
                             + phi[y + (x+1)*L] + phi[y + (x-1)*L])
-                            + p.scale*phi_old[y + x*L];
+                            + p.scale*phi_old[y + x*L] + phi[y + x*L]);
                 // a coarse phi is the error of a fine phi
         for (x = 1; x < L-1; x++)
             for (y = 1; y < L-1; y++) 
