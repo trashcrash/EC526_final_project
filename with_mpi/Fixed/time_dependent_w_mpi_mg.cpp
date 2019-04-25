@@ -1,15 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include <complex.h>
 #include <mpi.h>
-#include <opencv2/opencv.hpp>                       // opencv
+#include <chrono>
+//#include <opencv2/opencv.hpp>                       // opencv
 
-using namespace cv;                                 // opencv
+//using namespace cv;                                 // opencv
 
 #define RESGOAL 1E-6
-#define NLEV 2                                     // If 0, only one level
-#define PERIOD 500
+#define NLEV 3                                     // If 0, only one level
+#define PERIOD 100
 #define PI 3.141592653589793
 #define TSTRIDE 10
 #define N_PER_LEV 10                                // Iterate 10 times for each level
@@ -23,7 +23,6 @@ typedef struct{
     int down_limit[20];
     int left_limit[20];
     int right_limit[20];
-    // double a[20];
     double m_square;
     double scale;
 } param;
@@ -54,7 +53,7 @@ int main(int argc, char** argv) {
     double *phi[20], *res[20], *phi_old[20];
     param p;
     int i, j, lev;
-    Mat image;
+    //Mat image;
     lengthOfEdge = 2;
   
     // Initialize parameters
@@ -68,7 +67,7 @@ int main(int argc, char** argv) {
         return 0;
     }
   
-    printf("\n W cycle for %d by %d lattice with NLEV = %d out of max %d \n", p.N, p.N, NLEV, p.Lmax); 
+    printf("\n V cycle for %d by %d lattice with NLEV = %d out of max %d \n", p.N, p.N, NLEV, p.Lmax); 
   
     // Initialize arrays
     p.size[0] = p.N;
@@ -129,50 +128,31 @@ int main(int argc, char** argv) {
 
         // Source varies with time
         if (resmag < RESGOAL) {
-            // TIMING LINE 2: Get the ending timestamp.
-            std::chrono::time_point<std::chrono::steady_clock> end_time =
-            std::chrono::steady_clock::now();
 
-            // TIMING LINE 3: Compute the difference.
-            std::chrono::duration<double> difference_in_time = end_time - begin_time;
-
-            // TIMING LINE 4: Get the difference in seconds.
-            double difference_in_seconds = difference_in_time.count();
-            if(my_rank==0) printf("t is %d, time is %.15f\n",t,difference_in_seconds);
+            if(my_rank==0) printf("t is %d, count is %d\n",t, ncycle);
 
             t += 1;
             if(my_rank == mySourceRank)
-                res[0][0] = 3.0*TSTRIDE*p.scale*(1+sin(2.0*PI*t/(PERIOD/10)));
+                res[0][0] = 1.0*TSTRIDE*p.scale*(1+sin(2.0*PI*t/(PERIOD)));
             ncycle = 0;
             for (lev = 0; lev < p.Lmax+1; lev++) {
                 for (i = 0; i < p.localSize[lev]*p.localSize[lev]; i++) {
                     phi_old[lev][i] = phi[lev][i];
                 }
-            }
-            
-            if(my_rank==0){
-                image = Mat(p.localSize[0], p.localSize[0], CV_64F, phi[0]);                  // opencv
-                imshow("core0", image);                                              // opencv
-                waitKey(25);                                                        // opencv 25ms per frame
-            }
-            if(my_rank==1){
-                image = Mat(p.localSize[0], p.localSize[0], CV_64F, phi[0]);                  // opencv
-                imshow("core1", image);                                              // opencv
-                waitKey(25);
-                }                                                        // opencv 25ms per frame
-           if(my_rank==2){
-                image = Mat(p.localSize[0], p.localSize[0], CV_64F, phi[0]);                  // opencv
-                imshow("core2", image);                                              // opencv
-                waitKey(25); }
-           if(my_rank==3){
-                image = Mat(p.localSize[0], p.localSize[0], CV_64F, phi[0]);                  // opencv
-                imshow("core3", image);                                              // opencv
-                waitKey(25);
             } 
-            
         }
     }
-    
+        // TIMING LINE 2: Get the ending timestamp.
+    std::chrono::time_point<std::chrono::steady_clock> end_time =
+    std::chrono::steady_clock::now();
+
+    // TIMING LINE 3: Compute the difference.
+    std::chrono::duration<double> difference_in_time = end_time - begin_time;
+
+    // TIMING LINE 4: Get the difference in seconds.
+    double difference_in_seconds = difference_in_time.count();
+    if(my_rank==0) printf("time is %.15f\n",difference_in_seconds);
+
     // Write result to file
     /*
     for (i = 0; i < p.N; i++) {
@@ -204,12 +184,13 @@ void w_cycle(double **phi, double **phi_old, double **res, int this_lev, int ord
     }
 }
 
+
 void inter_add(double *phi_f, double *phi_c, int lev, param p) {  
     int L, Lc, x, y;
     Lc = p.localSize[lev];  // coarse  level
     L = p.localSize[lev-1]; 
 
-    // Set up boundaries
+    //printf("From %d to %d for rank %d\n",lev,lev-1,my_rank);
     int left_limit = p.left_limit[lev];
     int right_limit = p.right_limit[lev];
     int up_limit = p.up_limit[lev];
@@ -230,6 +211,7 @@ void inter_add(double *phi_f, double *phi_c, int lev, param p) {
             if(phi_c[y + x*Lc]>10) printf("for rank %d phi_c %d,%d is %f\n",my_rank,y,x,phi_c[y + x*Lc]);
                     phi_c[y + x*Lc] = 0.0;
         }
+    //printf("Done %d to %d for rank %d\n",lev,lev-1,my_rank);
     return;
 }
 
@@ -238,12 +220,13 @@ void proj_res(double *res_c, double *res_f, double *phi_f, double *phi_old_f, in
     L = p.localSize[lev];
     double r[L*L];          // residue of Ae = r
     Lc = p.localSize[lev+1];     // coarse level
+
+    //printf("From %d to %d for rank %d\n",lev,lev+1,my_rank);
   
     //get residue
 
     getR(res_f,phi_f,phi_old_f,r,lev,p);
 
-    //Set up boundaries
     int left_limit = p.left_limit[lev+1];
     int right_limit = p.right_limit[lev+1];
     int up_limit = p.up_limit[lev+1];
@@ -254,6 +237,8 @@ void proj_res(double *res_c, double *res_f, double *phi_f, double *phi_old_f, in
         for(y = left_limit; y <= right_limit; y++)
             res_c[x*Lc + y] = 0.25*(r[(2*y-left_limit) + (2*x-up_limit)*L] + r[(2*y-left_limit+1) + (2*x-up_limit)*L]
                                   + r[(2*y-left_limit) + (2*x-up_limit+1)*L] + r[(2*y-left_limit+1) + (2*x-up_limit+1)*L]);
+
+    //printf("Done %d to %d for rank %d\n",lev,lev+1,my_rank);
     return;
 }
 
@@ -290,7 +275,6 @@ void getR(double *res, double *phi, double *phi_old, double *r, int lev, param p
     int up_limit = p.up_limit[lev];
     int down_limit = p.down_limit[lev];
 
-    // Fill the buffer to send to other cores.
     for(i=0;i<L;i++){
         toLeft[i]=phi[i*L];
         toRight[i]=phi[L - 1 + i*L];
@@ -315,7 +299,6 @@ void getR(double *res, double *phi, double *phi_old, double *r, int lev, param p
     MPI_Isend(toRight,   L, MPI_DOUBLE, (my_rank+1)%world_size, 4, MPI_COMM_WORLD, request + requests++);
     MPI_Irecv(leftBuff, L, MPI_DOUBLE, (my_rank+world_size-1)%world_size, 4, MPI_COMM_WORLD, request + requests++);
 
-    // Loop over the inner part.
     for (x = up_limit+1; x <= down_limit-1; x++)
         for (y = left_limit+1; y <= right_limit-1; y++){
             r[y+x*L] = res[y + x*L] - phi[y + x*L]  
@@ -323,8 +306,7 @@ void getR(double *res, double *phi, double *phi_old, double *r, int lev, param p
                     + p.scale*phi_old[y + x*L];
         }
 
-    // If we dont use the up buffer
-    if(up_limit-1==0)                                                 
+    if(up_limit-1==0)                                                     // Up is boundary
         for(y = left_limit+1; y <= right_limit-1; y++){
             r[y+up_limit*L] = res[y + up_limit*L] - phi[y + up_limit*L]  
                 + TSTRIDE*p.scale*(phi[y+1 + up_limit*L] + phi[y-1 + up_limit*L] 
@@ -332,7 +314,6 @@ void getR(double *res, double *phi, double *phi_old, double *r, int lev, param p
                 + p.scale*phi_old[y + up_limit*L];
     }
 
-    // If we dont use the down buffer
     if(down_limit+1==L-1)
         for(y = left_limit+1; y <= right_limit-1; y++){
             r[y+down_limit*L] = res[y + down_limit*L] - phi[y + down_limit*L]  
@@ -341,7 +322,6 @@ void getR(double *res, double *phi, double *phi_old, double *r, int lev, param p
                     + p.scale*phi_old[y + down_limit*L];
     }
 
-    // If we dont use left buffer.
     if(left_limit-1==0)
         for(x = up_limit + 1;x <= down_limit - 1;x++){
             r[left_limit+x*L] = res[left_limit + x*L] - phi[left_limit + x*L]  
@@ -350,7 +330,6 @@ void getR(double *res, double *phi, double *phi_old, double *r, int lev, param p
                     + p.scale*phi_old[left_limit + x*L];
     }
 
-    // If we dont use the right buffer.
     if(right_limit + 1 == L - 1)
         for(x = up_limit + 1;x <= down_limit - 1;x++){
             r[right_limit+x*L] = res[right_limit + x*L] - phi[right_limit + x*L]  
@@ -362,7 +341,6 @@ void getR(double *res, double *phi, double *phi_old, double *r, int lev, param p
 
     MPI_Waitall (requests, request, status);
 
-    // If we use up buffer
     if(up_limit-1==(-1))                                             // Up is Buffer
         for(y = left_limit+1; y <= right_limit-1; y++){
         r[y+up_limit*L] = res[y + up_limit*L] - phi[y + up_limit*L]  
@@ -371,7 +349,6 @@ void getR(double *res, double *phi, double *phi_old, double *r, int lev, param p
                     + p.scale*phi_old[y + up_limit*L];
     }
 
-    // If we use down buffer
     if(down_limit+1==L)
         for(y = left_limit+1; y <= right_limit-1; y++){
         r[y+down_limit*L] = res[y + down_limit*L] - phi[y + down_limit*L]  
@@ -380,7 +357,6 @@ void getR(double *res, double *phi, double *phi_old, double *r, int lev, param p
                     + p.scale*phi_old[y + down_limit*L];
     }
 
-    // If we use left buffer
     if (left_limit-1 == (-1))
         for(x = up_limit + 1;x <= down_limit - 1;x++){
         r[left_limit+x*L] = res[left_limit + x*L] - phi[left_limit + x*L]  
@@ -389,7 +365,6 @@ void getR(double *res, double *phi, double *phi_old, double *r, int lev, param p
                 + p.scale*phi_old[left_limit + x*L];
     }
 
-    // If we use right buffer
     if(right_limit+1==L)
         for(x = up_limit + 1;x <= down_limit - 1;x++){
         r[right_limit+x*L] = res[right_limit + x*L] - phi[right_limit + x*L]  
@@ -398,8 +373,8 @@ void getR(double *res, double *phi, double *phi_old, double *r, int lev, param p
                 + p.scale*phi_old[right_limit + x*L];
     }                                                
 
-    // Set up boundaries for four courners.
     // U -> up, D -> down; L -> left, R -> Right, [A][B][C] {A -> y.pos, B -> x.pos, C -> point.relativePos}
+      
     double ULU = (up_limit-1==0) ? phi[left_limit + (up_limit-1)*L] : upBuff[left_limit];
     double ULL = (left_limit-1==0) ? phi[left_limit-1 + up_limit*L] : leftBuff[up_limit];
     r[left_limit+up_limit*L] = res[left_limit + up_limit*L] - phi[left_limit + up_limit*L]  
@@ -428,7 +403,8 @@ void getR(double *res, double *phi, double *phi_old, double *r, int lev, param p
                 + DRD + phi[right_limit + (down_limit-1)*L])
                 + p.scale*phi_old[right_limit + down_limit*L];
 
-    // Free the buffers
+    //printf("Rank%d RES is %.15f\n",my_rank,ResRoot);
+
     free(leftBuff);
     free(rightBuff);
     free(upBuff);
@@ -473,7 +449,6 @@ double GetResRoot(double *phi, double *phi_old, double *res, int lev, param p) {
     int up_limit = p.up_limit[lev];
     int down_limit = p.down_limit[lev];
 
-    // Fill up the buffer to send to another core
     for(i=0;i<L;i++){
         toLeft[i]=phi[i*L];
         toRight[i]=phi[L - 1 + i*L];
@@ -498,7 +473,6 @@ double GetResRoot(double *phi, double *phi_old, double *res, int lev, param p) {
     MPI_Isend(toRight,   L, MPI_DOUBLE, (my_rank+1)%world_size, 4, MPI_COMM_WORLD, request + requests++);
     MPI_Irecv(leftBuff, L, MPI_DOUBLE, (my_rank+world_size-1)%world_size, 4, MPI_COMM_WORLD, request + requests++);
 
-    // Loop over the rest.
     for (x = up_limit+1; x <= down_limit-1; x++)
         for (y = left_limit+1; y <= right_limit-1; y++){
             residue = res[y + x*L]/p.scale/TSTRIDE - phi[y + x*L]/p.scale/TSTRIDE  
@@ -508,7 +482,6 @@ double GetResRoot(double *phi, double *phi_old, double *res, int lev, param p) {
             ResRoot += residue*residue; // true residue
         }
 
-    // If we dont use up_buffer
     if(up_limit-1==0)                                                     // Up is boundary
         for(y = left_limit+1; y <= right_limit-1; y++){
         residue = res[y + up_limit*L]/p.scale/TSTRIDE - phi[y + up_limit*L]/p.scale/TSTRIDE  
@@ -518,7 +491,6 @@ double GetResRoot(double *phi, double *phi_old, double *res, int lev, param p) {
         ResRoot += residue*residue; // true residue
     }
 
-    // If we dont use down_buffer
     if(down_limit+1==L-1)
         for(y = left_limit+1; y <= right_limit-1; y++){
         residue = res[y + down_limit*L]/p.scale/TSTRIDE - phi[y + down_limit*L]/p.scale/TSTRIDE  
@@ -528,7 +500,6 @@ double GetResRoot(double *phi, double *phi_old, double *res, int lev, param p) {
         ResRoot += residue*residue; // true residue
     }
 
-    // If we dont use left_buffer
     if(left_limit-1==0)
         for(x = up_limit + 1;x <= down_limit - 1;x++){
         residue = res[left_limit + x*L]/p.scale/TSTRIDE - phi[left_limit + x*L]/p.scale/TSTRIDE  
@@ -538,7 +509,6 @@ double GetResRoot(double *phi, double *phi_old, double *res, int lev, param p) {
         ResRoot += residue*residue; // true residue
     }
 
-    // If we dont use right_buffer
     if(right_limit + 1 == L - 1)
         for(x = up_limit + 1;x <= down_limit - 1;x++){
         residue = res[right_limit + x*L]/p.scale/TSTRIDE - phi[right_limit + x*L]/p.scale/TSTRIDE  
@@ -547,10 +517,10 @@ double GetResRoot(double *phi, double *phi_old, double *res, int lev, param p) {
                 + phi_old[right_limit + x*L]/TSTRIDE;
         ResRoot += residue*residue; // true residue
     }
+    //printf("rank %d res %f\n",my_rank,ResRoot);
 
     MPI_Waitall (requests, request, status);
 
-    // If we need to use up_buffer
     if(up_limit-1==(-1))                                             // Up is Buffer
         for(y = left_limit+1; y <= right_limit-1; y++){
         residue = res[y + up_limit*L]/p.scale/TSTRIDE - phi[y + up_limit*L]/p.scale/TSTRIDE  
@@ -560,7 +530,6 @@ double GetResRoot(double *phi, double *phi_old, double *res, int lev, param p) {
         ResRoot += residue*residue; // true residue
     }
 
-    // If we need to use down_buffer
     if(down_limit+1==L)
         for(y = left_limit+1; y <= right_limit-1; y++){
         residue = res[y + down_limit*L]/p.scale/TSTRIDE - phi[y + down_limit*L]/p.scale/TSTRIDE  
@@ -570,7 +539,6 @@ double GetResRoot(double *phi, double *phi_old, double *res, int lev, param p) {
         ResRoot += residue*residue; // true residue
     }
 
-    // If we need to use left_buffer
     if (left_limit-1 == (-1))
         for(x = up_limit + 1;x <= down_limit - 1;x++){
         residue = res[left_limit + x*L]/p.scale/TSTRIDE - phi[left_limit + x*L]/p.scale/TSTRIDE  
@@ -580,7 +548,6 @@ double GetResRoot(double *phi, double *phi_old, double *res, int lev, param p) {
         ResRoot += residue*residue; // true residue
     }
 
-    // If we need to use right_buffer
     if(right_limit+1==L)
         for(x = up_limit + 1;x <= down_limit - 1;x++){
         residue = res[right_limit + x*L]/p.scale/TSTRIDE - phi[right_limit + x*L]/p.scale/TSTRIDE  
@@ -590,7 +557,6 @@ double GetResRoot(double *phi, double *phi_old, double *res, int lev, param p) {
         ResRoot += residue*residue; // true residue
     }                                                
 
-    // Set up boundaries for the four courners
     // U -> up, D -> down; L -> left, R -> Right, [A][B][C] {A -> y.pos, B -> x.pos, C -> point.relativePos}
     double ULU = (up_limit-1==0) ? phi[left_limit + (up_limit-1)*L] : upBuff[left_limit];
     double ULL = (left_limit-1==0) ? phi[left_limit-1 + up_limit*L] : leftBuff[up_limit];
@@ -624,7 +590,8 @@ double GetResRoot(double *phi, double *phi_old, double *res, int lev, param p) {
             + phi_old[right_limit + down_limit*L]/TSTRIDE;
     ResRoot += residue*residue; // true residue
 
-    // Free up
+    //printf("Rank%d RES is %.15f\n",my_rank,ResRoot);
+
     free(leftBuff);
     free(rightBuff);
     free(upBuff);
@@ -673,10 +640,11 @@ void relax(double *phi, double *phi_old, double *res, int lev, param p) {
 
     for (i = 0; i < N_PER_LEV; i++) { 
 
-        // Set up the Buffer to send to other cores
         for(x=0;x<L;x++){
             toLeft[x]=phi[x*L];
+            //if(toLeft[x]!=0) printf("toLeft %d from rank %d is %f\n",x,my_rank,toLeft[x]);
             toRight[x]=phi[L - 1 + x*L];
+            //if(toRight[x]!=0) printf("toRight %d from rank %d is %f\n",x,my_rank,toRight[x]);
         }
 
         requests=0;
@@ -732,6 +700,7 @@ void relax(double *phi, double *phi_old, double *res, int lev, param p) {
                             + TSTRIDE*p.scale*(phi[right_limit+1 + x*L] + phi[right_limit-1 + x*L] 
                             + phi[right_limit + (x+1)*L] + phi[right_limit + (x-1)*L])
                             + p.scale*phi_old[right_limit + x*L]) + 0.5 * phi[right_limit + x*L];
+
         MPI_Waitall (requests, request, status);
 
         if(up_limit-1==(-1))                                             // Up is Buffer
@@ -792,11 +761,13 @@ void relax(double *phi, double *phi_old, double *res, int lev, param p) {
                             + DRD + phi[right_limit + (down_limit-1)*L])
                             + p.scale*phi_old[right_limit + down_limit*L]) + 0.5 * phi[right_limit + down_limit*L];   
 
-
         // a coarse phi is the error of a fine phi
         for (x = 0; x <L; x++)
             for (y = 0; y < L; y++) 
-                phi[y + x*L] = tmp[y + x*L];   
+                {
+                    phi[y + x*L] = tmp[y + x*L];
+                    //if(phi[y + x*L]>0) printf("Rank %d, phi %d,%d is %f\n",my_rank,y,x,phi[y + x*L]);
+                }
     }    
 
     free(tmp);
