@@ -6,11 +6,11 @@
 
 using namespace cv;                                 // opencv
 
-#define RESGOAL 1E-6
-#define NLEV 0                                      // If 0, only one level
-#define PERIOD 500
+#define RESGOAL 1E-4
+#define NLEV 4                                      // If 0, only one level
+#define PERIOD 1
 #define PI 3.141592653589793
-#define TSTRIDE 10
+#define TSTRIDE 1000000.0
 #define N_PER_LEV 10                                // Iterate 10 times for each level
 
 typedef struct{
@@ -95,11 +95,10 @@ int main() {
         v_cycle(phi, phi_old, res, p);
         resmag = GetResRoot(phi[0], phi_old[0], res[0], 0, p);
         printf("At the %d cycle the mag residue is %g \n",ncycle,resmag);
-
         // Source varies with time
         if (resmag < RESGOAL) {
             t += 1;
-            res[0][p.N/2 + (p.N/2)*p.N] = 1.0*TSTRIDE*p.scale*(1+sin(2.0*PI*t/(PERIOD/5)));
+            res[0][p.N/2 + (p.N/2)*p.N] = 1.0*TSTRIDE*p.scale*(1+sin(2.0*PI*t/(PERIOD/1.0)));
             ncycle = 0;
             for (lev = 0; lev < p.Lmax+1; lev++) {
                 for (i = 0; i < p.size[lev]*p.size[lev]; i++) {
@@ -126,7 +125,6 @@ int main() {
     oVideoWriter.release();
     return 0;
 }
-
 void v_cycle(double **phi, double **phi_old, double **res, param p) {
 
     int lev;
@@ -139,7 +137,6 @@ void v_cycle(double **phi, double **phi_old, double **res, param p) {
         // Get the projected residue and use it to compute the error of the previous level, which is phi on this level (RECURSIVE). 
         proj_res(res[lev + 1], res[lev], phi[lev], phi_old[lev], lev,p);
     }
-
     // Go up
     for (lev = NLEV; lev >= 0; lev--) { 
         
@@ -160,16 +157,20 @@ void relax(double *phi, double *phi_old, double *res, int lev, param p) {
     tmp = (double*)malloc((p.size[lev]-2)*(p.size[lev]-2)*sizeof(double));
     L  = p.size[lev];
     for (i = 0; i < N_PER_LEV; i++) {   
-        for (x = 1; x < L-1; x++)
-            for (y = 1; y < L-1; y++)
-                tmp[y-1+(x-1)*(L-2)] = res[y + x*L]
+        for (x = 1; x < L-1; x++) {
+            for (y = 1; y < L-1; y++) {
+                tmp[y-1+(x-1)*(L-2)] = 0.5*(res[y + x*L]
                             + TSTRIDE*p.scale*(phi[y+1 + x*L] + phi[y-1 + x*L] 
                             + phi[y + (x+1)*L] + phi[y + (x-1)*L])
-                            + p.scale*phi_old[y + x*L];
+                            + p.scale*phi_old[y + x*L] + phi[y + x*L]);
+            }
+        }
                 // a coarse phi is the error of a fine phi
-        for (x = 1; x < L-1; x++)
-            for (y = 1; y < L-1; y++) 
+        for (x = 1; x < L-1; x++) {
+            for (y = 1; y < L-1; y++) {
                 phi[y + x*L] = tmp[y-1 + (x-1)*(L-2)];
+            }
+        }
     }
     free(tmp);
     return;
@@ -182,24 +183,28 @@ void proj_res(double *res_c, double *res_f, double *phi_f, double *phi_old_f, in
     Lc = p.size[lev+1];     // coarse level
   
     //get residue
-    for(x = 1; x < L-1; x++)
-        for(y = 1; y < L-1; y++)
+    for(x = 1; x < L-1; x++) {
+        for(y = 1; y < L-1; y++) {
             r[x*L + y] = res_f[x*L + y] - phi_f[x*L + y] + p.scale*phi_old_f[x*L + y] 
                 + TSTRIDE*p.scale*(phi_f[y+1 + x*L] + phi_f[y-1 + x*L] + phi_f[y + (x+1)*L] + phi_f[y + (x-1)*L]);
+        }
+    }
 
     //project residue
-    for(x = 1; x < Lc-1; x++)
-        for(y = 1; y < Lc-1; y++)
+    for(x = 1; x < Lc-1; x++) {
+        for(y = 1; y < Lc-1; y++) {
             res_c[x*Lc + y] = 0.25*(r[(2*x-1)*L + (2*y-1)] + r[(2*y) + (2*x-1)*L] + r[(2*y-1) + (2*x)*L] + r[(2*y) + (2*x)*L]);
-    return;
+        }
+    }
 }
 
 void inter_add(double *phi_f, double *phi_c, int lev, param p) {  
     int L, Lc, x, y;
     Lc = p.size[lev];  // coarse  level
     L = p.size[lev-1]; 
-  
-    for (x = 1; x < Lc-1; x++)
+    //printf("%.17f\t%.17f\t%.17f\t%.17f\n", phi_f[1+1*L], phi_f[1+2*L], phi_f[2+1*L], phi_f[2+2*L]);
+    //printf("%.17f\n", phi_c[1+1*Lc]);
+    for (x = 1; x < Lc-1; x++) {
         for (y = 1; y < Lc-1; y++) {
 
             // Add the error back to phi
@@ -208,6 +213,7 @@ void inter_add(double *phi_f, double *phi_c, int lev, param p) {
             phi_f[(2*y-1) + (2*x)*L] += phi_c[y + x*Lc];
             phi_f[(2*y) + (2*x)*L] += phi_c[y + x*Lc];
         }
+    }
     //set to zero so phi = error 
     for (x = 1; x < Lc-1; x++)
         for (y = 1; y < Lc-1; y++)
