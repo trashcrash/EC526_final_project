@@ -1,15 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include <complex.h>
 #include <mpi.h>
-#include <opencv2/opencv.hpp>                       // opencv
+#include <chrono>
+//#include <opencv2/opencv.hpp>                       // opencv
 
-using namespace cv;                                 // opencv
+//using namespace cv;                                 // opencv
 
 #define RESGOAL 1E-6
-#define NLEV 7                                     // If 0, only one level
-#define PERIOD 500
+#define NLEV 3                                     // If 0, only one level
+#define PERIOD 100
 #define PI 3.141592653589793
 #define TSTRIDE 10
 #define N_PER_LEV 10                                // Iterate 10 times for each level
@@ -54,7 +54,7 @@ int main(int argc, char** argv) {
     double *phi[20], *res[20], *phi_old[20];
     param p;
     int i, j, lev;
-    Mat image;
+    //Mat image;
     lengthOfEdge = 2;
   
     // Initialize parameters
@@ -129,52 +129,31 @@ int main(int argc, char** argv) {
 
         // Source varies with time
         if (resmag < RESGOAL) {
-            // TIMING LINE 2: Get the ending timestamp.
-            std::chrono::time_point<std::chrono::steady_clock> end_time =
-            std::chrono::steady_clock::now();
 
-            // TIMING LINE 3: Compute the difference.
-            std::chrono::duration<double> difference_in_time = end_time - begin_time;
-
-            // TIMING LINE 4: Get the difference in seconds.
-            double difference_in_seconds = difference_in_time.count();
-            if(my_rank==0) printf("t is %d, time is %.15f, ncycle is %d\n",t,difference_in_seconds,ncycle);
+            if(my_rank==0) printf("t is %d, count is %d\n",t, ncycle);
 
             t += 1;
             if(my_rank == mySourceRank)
-                res[0][0] = 3.0*TSTRIDE*p.scale*(1+sin(2.0*PI*t/(PERIOD/10)));
+                res[0][0] = 1.0*TSTRIDE*p.scale*(1+sin(2.0*PI*t/(PERIOD)));
             ncycle = 0;
             for (lev = 0; lev < p.Lmax+1; lev++) {
                 for (i = 0; i < p.localSize[lev]*p.localSize[lev]; i++) {
                     phi_old[lev][i] = phi[lev][i];
                 }
-            }
-            
-            if(my_rank==0){
-                image = Mat(p.localSize[0], p.localSize[0], CV_64F, phi[0]);         // opencv
-                imshow("core0", image);                                              // opencv
-                waitKey(25);                                                         // opencv 25ms per frame
-            }
-            if(my_rank==1){
-                image = Mat(p.localSize[0], p.localSize[0], CV_64F, phi[0]);                  // opencv
-                imshow("core1", image);                                              // opencv
-                waitKey(25);
-                }                                                        // opencv 25ms per frame
-           if(my_rank==2){
-                image = Mat(p.localSize[0], p.localSize[0], CV_64F, phi[0]);                  // opencv
-                imshow("core2", image);                                              // opencv
-                waitKey(25); }
-           if(my_rank==3){
-                image = Mat(p.localSize[0], p.localSize[0], CV_64F, phi[0]);                  // opencv
-                imshow("core3", image);                                              // opencv
-                waitKey(25);
             } 
-        std::chrono::time_point<std::chrono::steady_clock> begin_time =
-        std::chrono::steady_clock::now();
-            
         }
     }
-    
+        // TIMING LINE 2: Get the ending timestamp.
+    std::chrono::time_point<std::chrono::steady_clock> end_time =
+    std::chrono::steady_clock::now();
+
+    // TIMING LINE 3: Compute the difference.
+    std::chrono::duration<double> difference_in_time = end_time - begin_time;
+
+    // TIMING LINE 4: Get the difference in seconds.
+    double difference_in_seconds = difference_in_time.count();
+    if(my_rank==0) printf("time is %.15f\n",difference_in_seconds);
+
     // Write result to file
     /*
     for (i = 0; i < p.N; i++) {
@@ -730,6 +709,7 @@ void relax(double *phi, double *phi_old, double *res, int lev, param p) {
                             + TSTRIDE*p.scale*(phi[right_limit+1 + x*L] + phi[right_limit-1 + x*L] 
                             + phi[right_limit + (x+1)*L] + phi[right_limit + (x-1)*L])
                             + p.scale*phi_old[right_limit + x*L]) + 0.5 * phi[right_limit + x*L];
+
         MPI_Waitall (requests, request, status);
 
         if(up_limit-1==(-1))                                             // Up is Buffer
