@@ -1,10 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include <complex.h>
+#include <chrono>
 
 #define RESGOAL 1E-6
-#define NLEV 7                                      // If 0, only one level
+#define NLEV 3                                      // If 0, only one level
 #define PERIOD 100
 #define PI 3.141592653589793
 #define TSTRIDE 10
@@ -26,14 +26,15 @@ double GetResRoot(double *phi, double *phi_old, double *res, int lev, param p);
 void w_cycle(double **phi, double **phi_old, double **res, int this_lev, int order, param p);
 
 int main() {  
+for (int iter = 0; iter < 1; iter++) {
     FILE* output;
-    output = fopen("result.dat", "w");
+    output = fopen("w_512_3lev_10stride.dat", "a");
     double *phi[20], *res[20], *phi_old[20];
     param p;
     int i, j, lev;
   
     // Initialize parameters
-    p.Lmax = 7;
+    p.Lmax = 8;
     p.N = 2*(int)pow(2,p.Lmax)+2;
     p.m_square = 0.0;                                     // Scaling parameter, a small number
 
@@ -43,7 +44,7 @@ int main() {
         return 0;
     }
   
-    printf("\n V cycle for %d by %d lattice with NLEV = %d out of max %d \n", p.N, p.N, NLEV, p.Lmax); 
+    printf("\n W cycle for %d by %d lattice with NLEV = %d out of max %d \n", p.N, p.N, NLEV, p.Lmax); 
   
     // Initialize arrays
     p.size[0] = p.N;
@@ -77,6 +78,8 @@ int main() {
     resmag = GetResRoot(phi[0], phi_old[0], res[0], 0, p);
     printf("At the %d cycle the mag residue is %g \n",ncycle,resmag);
  
+    std::chrono::time_point<std::chrono::steady_clock> begin_time =
+    std::chrono::steady_clock::now();
     // Total time steps = PERIOD
     while (t < PERIOD) {
         ncycle += 1; 
@@ -98,14 +101,22 @@ int main() {
     }
     
     // Write result to file
+    /*
     for (i = 0; i < p.N; i++) {
         for (j = 0; j < p.N; j++) {
             fprintf(output, "%f\t", phi[0][i*p.N+j]);
         }
         fprintf(output, "\n");
     }
+    */
+    std::chrono::time_point<std::chrono::steady_clock> end_time =
+    std::chrono::steady_clock::now();
+    std::chrono::duration<double> difference_in_time = end_time - begin_time;
+    double difference_in_seconds = difference_in_time.count();
+    fprintf(output, "%.10f\n", difference_in_seconds);
     
     fclose(output);
+}
     return 0;
 }
 

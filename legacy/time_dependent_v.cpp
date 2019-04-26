@@ -4,7 +4,7 @@
 #include <chrono>
 
 #define RESGOAL 1E-6
-#define NLEV 7                                      // If 0, only one level
+#define NLEV 3                                      // If 0, only one level
 #define PERIOD 100
 #define PI 3.141592653589793
 #define TSTRIDE 10
@@ -25,15 +25,16 @@ void inter_add(double *phi_f, double *phi_c, int lev,param p);
 double GetResRoot(double *phi, double *phi_old, double *res, int lev, param p);
 void v_cycle(double **phi, double **phi_old, double **res, param p);
 
-int main() {  
+int main() {
+for(int iter = 0; iter < 1; iter++) {  
     FILE* output;
-    output = fopen("result_256_7.dat", "a");
+    output = fopen("v_512_3lev_10stride.dat", "a");
     double *phi[20], *res[20], *phi_old[20];
     param p;
     int i, j, lev;
   
     // Initialize parameters
-    p.Lmax = 7;
+    p.Lmax = 8;
     p.N = 2*(int)pow(2,p.Lmax)+2;
     p.m_square = 0.0;                                     // Scaling parameter, a small number
 
@@ -118,6 +119,7 @@ int main() {
     */
     
     fclose(output);
+}
     return 0;
 }
 

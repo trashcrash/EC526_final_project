@@ -6,11 +6,11 @@
 
 using namespace cv;                                 // opencv
 
-#define RESGOAL 1E-4
-#define NLEV 4                                      // If 0, only one level
-#define PERIOD 1
+#define RESGOAL 1E-6
+#define NLEV 7                                      // If 0, only one level
+#define PERIOD 100
 #define PI 3.141592653589793
-#define TSTRIDE 1000000.0
+#define TSTRIDE 10
 #define N_PER_LEV 10                                // Iterate 10 times for each level
 
 typedef struct{
