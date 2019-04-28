@@ -68,8 +68,8 @@ ax.set_ylabel('Time Spent (s)', fontsize = 16)
 
 ax.axis([0, 7, 0, 75])
 linestyle = {"linestyle":"-", "linewidth":1, "markeredgewidth":1, "elinewidth":1, "capsize":2}
-ax.errorbar(xaxis, mean1, yerr = se1, **linestyle, label='V-cycle Gauss-Seidel')
-ax.errorbar(xaxis, mean2, yerr = se2, **linestyle, label='W-cycle Gauss-Seidel')
+ax.errorbar(xaxis, mean1, yerr = se1, **linestyle, label='V-cycle Jacobi')
+ax.errorbar(xaxis, mean2, yerr = se2, **linestyle, label='W-cycle Jacobi')
 ax.errorbar(xaxis, mean3, yerr = se3, **linestyle, label='V-cycle MPI')
 ax.errorbar(xaxis, mean4, yerr = se4, **linestyle, label='W-cycle MPI')
 ax.errorbar(xaxis, mean5, yerr = se5, **linestyle, label='V-cycle OpenACC')
