@@ -8,8 +8,8 @@
 //using namespace cv;                                 // opencv
 
 #define RESGOAL 1E-6
-#define NLEV 0                                     // If 0, only one level
-#define PERIOD 3
+#define NLEV 7                                     // If 0, only one level
+#define PERIOD 100
 #define PI 3.141592653589793
 #define TSTRIDE 10
 #define N_PER_LEV 10                                // Iterate 10 times for each level
@@ -23,7 +23,6 @@ typedef struct{
     int down_limit[20];
     int left_limit[20];
     int right_limit[20];
-    // double a[20];
     double m_square;
     double scale;
 } param;
@@ -37,7 +36,7 @@ void relax(double *phi, double *phi_old, double *res, int lev, param p);
 void proj_res(double *res_c, double *rec_f, double *phi_f, double *phi_old_f, int lev, param p);
 void inter_add(double *phi_f, double *phi_c, int lev,param p);
 double GetResRoot(double *phi, double *phi_old, double *res, int lev, param p);
-void v_cycle(double **phi, double **phi_old, double **res, param p);
+void w_cycle(double **phi, double **phi_old, double **res, int this_lev, int order, param p);
 void getR(double *res, double *phi, double *phi_old, double *r, int lev, param p);
 
 int main(int argc, char** argv) {     
@@ -50,7 +49,9 @@ int main(int argc, char** argv) {
    
     // Get the rank
     MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
-   
+for (int iter = 0; iter < 10; iter++) {
+    FILE* output;   
+    output = fopen("mpi_w_512_7lev_10stride.dat", "a");
     double *phi[20], *res[20], *phi_old[20];
     param p;
     int i, j, lev;
@@ -114,17 +115,14 @@ int main(int argc, char** argv) {
     resmag = GetResRoot(phi[0], phi_old[0], res[0], 0, p);
     printf("At the %d cycle the mag residue is %g \n",ncycle,resmag);
     // TIMING LINE 1: Get the starting timestamp. 
-    std::chrono::time_point<std::chrono::steady_clock> begin_time;
-    std::chrono::time_point<std::chrono::steady_clock> end_time;
-    std::chrono::duration<double> difference_in_time;
-    double difference_in_seconds;
+    std::chrono::time_point<std::chrono::steady_clock> begin_time =
+    std::chrono::steady_clock::now();
  
  
     // Total time steps = PERIOD
-    begin_time = std::chrono::steady_clock::now();
     while (t < PERIOD) {
         ncycle += 1; 
-        v_cycle(phi, phi_old, res, p);
+        w_cycle(phi, phi_old, res, 0, 1, p);
         resmag = GetResRoot(phi[0], phi_old[0], res[0], 0, p);
         //if(my_rank==0)
             //printf("At the %d cycle the mag residue is %g\n",ncycle,resmag);
@@ -146,10 +144,19 @@ int main(int argc, char** argv) {
             } 
         }
     }
-    end_time = std::chrono::steady_clock::now();
-    difference_in_time = end_time - begin_time;
-    difference_in_seconds = difference_in_time.count();
-    if(my_rank==0) printf("time is %.15f\n",difference_in_seconds);
+        // TIMING LINE 2: Get the ending timestamp.
+    std::chrono::time_point<std::chrono::steady_clock> end_time =
+    std::chrono::steady_clock::now();
+
+    // TIMING LINE 3: Compute the difference.
+    std::chrono::duration<double> difference_in_time = end_time - begin_time;
+
+    // TIMING LINE 4: Get the difference in seconds.
+    double difference_in_seconds = difference_in_time.count();
+    if(my_rank==0) {
+        printf("time is %.15f\n",difference_in_seconds);
+        fprintf(output, "%.10f\n", difference_in_seconds);
+    }
 
     // Write result to file
     /*
@@ -160,36 +167,30 @@ int main(int argc, char** argv) {
         fprintf(output, "\n");
     }
     */
+    fclose(output);
+}
     MPI_Finalize();
     
     return 0;
 }
 
-void v_cycle(double **phi, double **phi_old, double **res, param p) {
-
-    int lev;
-    // Go down
-    for (lev = 0; lev < NLEV; lev++) {    
-
-        // Get the new phi (smooth) and use it to compute residue, then project to the coarser level
-        relax(phi[lev], phi_old[lev], res[lev], lev, p);
-
-        // Get the projected residue and use it to compute the error of the previous level, which is phi on this level (RECURSIVE). 
-        proj_res(res[lev + 1], res[lev], phi[lev], phi_old[lev], lev,p);
+void w_cycle(double **phi, double **phi_old, double **res, int this_lev, int order, param p) {
+    // A tiny v cycle
+    if (this_lev == NLEV) {
+        relax(phi[this_lev], phi_old[this_lev], res[this_lev], this_lev, p);
     }
-
-    // Go up
-    for (lev = NLEV; lev >= 0; lev--) { 
-        
-        // Use the newly computed res to get a new phi. 
-        relax(phi[lev], phi_old[lev], res[lev], lev, p);   // lev = NLEV -1, ... 0;
-
-        // Interpolate to the finer level. the phi on the coarse level is the error on the fine level. 
-        if (lev > 0) {
-        inter_add(phi[lev-1], phi[lev], lev, p);   // phi[lev-1] += error = P phi[lev] and set phi[lev] = 0;
+    else {
+        relax(phi[this_lev], phi_old[this_lev], res[this_lev], this_lev, p);
+        proj_res(res[this_lev+1], res[this_lev], phi[this_lev], phi_old[this_lev], this_lev, p);
+        w_cycle(phi, phi_old, res, this_lev+1, 0, p);
+        w_cycle(phi, phi_old, res, this_lev+1, 1, p);
+        inter_add(phi[this_lev], phi[this_lev+1], this_lev+1, p);
+        if (order != 0) {
+            relax(phi[this_lev], phi_old[this_lev], res[this_lev], this_lev, p);
         }
     }
 }
+
 
 void inter_add(double *phi_f, double *phi_c, int lev, param p) {  
     int L, Lc, x, y;

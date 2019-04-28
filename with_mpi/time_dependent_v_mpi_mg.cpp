@@ -3,13 +3,11 @@
 #include <math.h>
 #include <complex.h>
 #include <mpi.h>
-#include <opencv2/opencv.hpp>                       // opencv
-
-using namespace cv;                                 // opencv
+#include <chrono>
 
 #define RESGOAL 1E-6
-#define NLEV 7                                     // If 0, only one level
-#define PERIOD 500
+#define NLEV 0                                     // If 0, only one level
+#define PERIOD 100
 #define PI 3.141592653589793
 #define TSTRIDE 10
 #define N_PER_LEV 10                                // Iterate 10 times for each level
@@ -54,11 +52,10 @@ int main(int argc, char** argv) {
     double *phi[20], *res[20], *phi_old[20];
     param p;
     int i, j, lev;
-    Mat image;
     lengthOfEdge = 2;
   
     // Initialize parameters
-    p.Lmax = 7;
+    p.Lmax = 8;
     p.N = 2*(int)pow(2,p.Lmax)+2;
     p.m_square = 0.0;                                     // Scaling parameter, a small number
 
@@ -123,8 +120,8 @@ int main(int argc, char** argv) {
         ncycle += 1; 
         v_cycle(phi, phi_old, res, p);
         resmag = GetResRoot(phi[0], phi_old[0], res[0], 0, p);
-        //if(my_rank==0)
-            //printf("At the %d cycle the mag residue is %g\n",ncycle,resmag);
+        if(my_rank==0)
+            printf("At the %d cycle the mag residue is %g\n",ncycle,resmag);
 
 
         // Source varies with time
@@ -142,34 +139,13 @@ int main(int argc, char** argv) {
 
             t += 1;
             if(my_rank == mySourceRank)
-                res[0][0] = 3.0*TSTRIDE*p.scale*(1+sin(2.0*PI*t/(PERIOD/10)));
+                res[0][0] = 1.0*TSTRIDE*p.scale*(1+sin(2.0*PI*t/(PERIOD)));
             ncycle = 0;
             for (lev = 0; lev < p.Lmax+1; lev++) {
                 for (i = 0; i < p.localSize[lev]*p.localSize[lev]; i++) {
                     phi_old[lev][i] = phi[lev][i];
                 }
             }
-            
-            if(my_rank==0){
-                image = Mat(p.localSize[0], p.localSize[0], CV_64F, phi[0]);                  // opencv
-                imshow("core0", image);                                              // opencv
-                waitKey(25);                                                        // opencv 25ms per frame
-            }
-            if(my_rank==1){
-                image = Mat(p.localSize[0], p.localSize[0], CV_64F, phi[0]);                  // opencv
-                imshow("core1", image);                                              // opencv
-                waitKey(25);
-                }                                                        // opencv 25ms per frame
-           if(my_rank==2){
-                image = Mat(p.localSize[0], p.localSize[0], CV_64F, phi[0]);                  // opencv
-                imshow("core2", image);                                              // opencv
-                waitKey(25); }
-           if(my_rank==3){
-                image = Mat(p.localSize[0], p.localSize[0], CV_64F, phi[0]);                  // opencv
-                imshow("core3", image);                                              // opencv
-                waitKey(25);
-            } 
-            
         }
     }
     

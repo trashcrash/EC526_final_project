@@ -1,0 +1,26 @@
+# Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
+
+#ACCEL_TYPE=PGI-multicore
+ACCEL_TYPE=PGI-tesla
+#ACCEL_TYPE=PGI
+
+CC = pgc++
+CFLAGS = -DUSE_DOUBLE
+
+ifeq ($(ACCEL_TYPE),PGI)
+	CFLAGS += -fast
+else ifeq ($(ACCEL_TYPE),PGI-tesla)
+	CFLAGS += -Minfo=accel -fast -acc -ta=tesla:cc60
+else ifeq ($(ACCEL_TYPE),PGI-multicore)
+	CFLAGS += -Minfo=accel -fast -acc -ta=multicore
+endif
+
+all: test	
+
+test: time_dependent_w_acc.cpp makeACC
+	$(CC) $(CFLAGS) time_dependent_w_acc.cpp -o test
+
+
+clean:
+	rm -f *o test
+

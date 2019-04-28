@@ -4,7 +4,7 @@
 #include <chrono>
 
 #define RESGOAL 1E-6
-#define NLEV 3                                      // If 0, only one level
+#define NLEV 8                                      // If 0, only one level
 #define PERIOD 100
 #define PI 3.141592653589793
 #define TSTRIDE 10
@@ -23,12 +23,12 @@ void relax(double *phi, double *phi_old, double *res, int lev, param p);
 void proj_res(double *res_c, double *rec_f, double *phi_f, double *phi_old_f, int lev, param p);
 void inter_add(double *phi_f, double *phi_c, int lev,param p);
 double GetResRoot(double *phi, double *phi_old, double *res, int lev, param p);
-void v_cycle(double **phi, double **phi_old, double **res, param p);
+void w_cycle(double **phi, double **phi_old, double **res, int this_lev, int order, param p);
 
-int main() {
-for(int iter = 0; iter < 1; iter++) {  
+int main() {  
+for (int iter = 0; iter < 10; iter++) {
     FILE* output;
-    output = fopen("v_512_3lev_10stride.dat", "a");
+    output = fopen("w_512_8lev_10stride_gauss.dat", "a");
     double *phi[20], *res[20], *phi_old[20];
     param p;
     int i, j, lev;
@@ -44,7 +44,7 @@ for(int iter = 0; iter < 1; iter++) {
         return 0;
     }
   
-    printf("\n V cycle for %d by %d lattice with NLEV = %d out of max %d \n", p.N, p.N, NLEV, p.Lmax); 
+    printf("\n W cycle for %d by %d lattice with NLEV = %d out of max %d \n", p.N, p.N, NLEV, p.Lmax); 
   
     // Initialize arrays
     p.size[0] = p.N;
@@ -77,14 +77,13 @@ for(int iter = 0; iter < 1; iter++) {
     int t = 0;
     resmag = GetResRoot(phi[0], phi_old[0], res[0], 0, p);
     printf("At the %d cycle the mag residue is %g \n",ncycle,resmag);
-
+ 
     std::chrono::time_point<std::chrono::steady_clock> begin_time =
     std::chrono::steady_clock::now();
- 
     // Total time steps = PERIOD
     while (t < PERIOD) {
         ncycle += 1; 
-        v_cycle(phi, phi_old, res, p);
+        w_cycle(phi, phi_old, res, 0, 1, p);
         resmag = GetResRoot(phi[0], phi_old[0], res[0], 0, p);
         printf("At the %d cycle the mag residue is %g \n",ncycle,resmag);
 
@@ -101,14 +100,7 @@ for(int iter = 0; iter < 1; iter++) {
         }
     }
     
-    std::chrono::time_point<std::chrono::steady_clock> end_time =
-    std::chrono::steady_clock::now();
-    std::chrono::duration<double> difference_in_time = end_time - begin_time;
-    double difference_in_seconds = difference_in_time.count();
-    fprintf(output, "%.10f\n", difference_in_seconds);
-
     // Write result to file
-
     /*
     for (i = 0; i < p.N; i++) {
         for (j = 0; j < p.N; j++) {
@@ -117,34 +109,31 @@ for(int iter = 0; iter < 1; iter++) {
         fprintf(output, "\n");
     }
     */
+    std::chrono::time_point<std::chrono::steady_clock> end_time =
+    std::chrono::steady_clock::now();
+    std::chrono::duration<double> difference_in_time = end_time - begin_time;
+    double difference_in_seconds = difference_in_time.count();
+    fprintf(output, "%.10f\n", difference_in_seconds);
     
     fclose(output);
 }
     return 0;
 }
 
-void v_cycle(double **phi, double **phi_old, double **res, param p) {
+void w_cycle(double **phi, double **phi_old, double **res, int this_lev, int order, param p) {
 
-    int lev;
-    // Go down
-    for (lev = 0; lev < NLEV; lev++) {    
-
-        // Get the new phi (smooth) and use it to compute residue, then project to the coarser level
-        relax(phi[lev], phi_old[lev], res[lev], lev, p);
-
-        // Get the projected residue and use it to compute the error of the previous level, which is phi on this level (RECURSIVE). 
-        proj_res(res[lev + 1], res[lev], phi[lev], phi_old[lev], lev,p);
+    // A tiny v cycle
+    if (this_lev == NLEV) {
+        relax(phi[this_lev], phi_old[this_lev], res[this_lev], this_lev, p);
     }
-
-    // Go up
-    for (lev = NLEV; lev >= 0; lev--) { 
-        
-        // Use the newly computed res to get a new phi. 
-        relax(phi[lev], phi_old[lev], res[lev], lev, p);   // lev = NLEV -1, ... 0;
-
-        // Interpolate to the finer level. the phi on the coarse level is the error on the fine level. 
-        if (lev > 0) {
-            inter_add(phi[lev-1], phi[lev], lev, p);   // phi[lev-1] += error = P phi[lev] and set phi[lev] = 0;
+    else {
+        relax(phi[this_lev], phi_old[this_lev], res[this_lev], this_lev, p);
+        proj_res(res[this_lev+1], res[this_lev], phi[this_lev], phi_old[this_lev], this_lev, p);
+        w_cycle(phi, phi_old, res, this_lev+1, 0, p);
+        w_cycle(phi, phi_old, res, this_lev+1, 1, p);
+        inter_add(phi[this_lev], phi[this_lev+1], this_lev+1, p);
+        if (order != 0) {
+            relax(phi[this_lev], phi_old[this_lev], res[this_lev], this_lev, p);
         }
     }
 }

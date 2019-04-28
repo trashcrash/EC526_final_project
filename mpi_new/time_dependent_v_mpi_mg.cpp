@@ -1,15 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include <mpi.h>
+#include "mpi.h"
 #include <chrono>
 //#include <opencv2/opencv.hpp>                       // opencv
 
 //using namespace cv;                                 // opencv
 
 #define RESGOAL 1E-6
-#define NLEV 0                                     // If 0, only one level
-#define PERIOD 3
+#define NLEV 8                                     // If 0, only one level
+#define PERIOD 100
 #define PI 3.141592653589793
 #define TSTRIDE 10
 #define N_PER_LEV 10                                // Iterate 10 times for each level
@@ -50,6 +50,9 @@ int main(int argc, char** argv) {
    
     // Get the rank
     MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
+for (int iter = 0; iter < 10; iter++) {
+    FILE* output;
+    output = fopen("mpi_v_512_8lev_10stride.dat", "a");
    
     double *phi[20], *res[20], *phi_old[20];
     param p;
@@ -149,7 +152,10 @@ int main(int argc, char** argv) {
     end_time = std::chrono::steady_clock::now();
     difference_in_time = end_time - begin_time;
     difference_in_seconds = difference_in_time.count();
-    if(my_rank==0) printf("time is %.15f\n",difference_in_seconds);
+    if(my_rank==0) {
+        printf("time is %.15f\n",difference_in_seconds);
+        fprintf(output, "%.10f\n", difference_in_seconds);
+    }
 
     // Write result to file
     /*
@@ -159,7 +165,9 @@ int main(int argc, char** argv) {
         }
         fprintf(output, "\n");
     }
-    */
+    */
+    fclose(output);
+}
     MPI_Finalize();
     
     return 0;

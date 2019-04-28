@@ -9,7 +9,7 @@
 
 #define RESGOAL 1E-6
 #define NLEV 0                                     // If 0, only one level
-#define PERIOD 3
+#define PERIOD 100
 #define PI 3.141592653589793
 #define TSTRIDE 10
 #define N_PER_LEV 10                                // Iterate 10 times for each level

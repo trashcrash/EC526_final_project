@@ -14,7 +14,7 @@
 
 static const double scale = 1.0/(4.0*TSTRIDE + 1);
 int relax(double *phi, double *phi_old, double *res, double *tmp, int L, int startpt);
-void v_cycle(double *phi, double *phi_old, double *res, double *tmp, int *edge_lev, int *startpt);
+void w_cycle(double *phi, double *phi_old, double *res, double *tmp, int *edge_lev, int *startpt, int this_lev, int flag);
 void proj_res(double *res, double *phi, double *phi_old, double *tmp, int *edge_lev, int *startpt, int lev);
 void inter_add(double *phi, int *edge_lev, int *startpt, int lev);
 void GetResRoot(double *phi, double *phi_old, double *res, double *resmag);
@@ -24,7 +24,7 @@ for (int iter = 0; iter < 10; iter++) {
     double *phi, *res, *phi_old, *tmp, *resmag;
     int *edge_lev, *startpt;
     FILE* output;
-    output = fopen("acc_v_512_7lev.dat", "a");
+    output = fopen("acc_w_512_7lev.dat", "a");
     #pragma acc init
     int i;
 
@@ -67,7 +67,7 @@ for (int iter = 0; iter < 10; iter++) {
     {
         while (resmag[0] > RESGOAL) {
             ncycle += 1; 
-            v_cycle(phi, phi_old, res, tmp, edge_lev, startpt);
+            w_cycle(phi, phi_old, res, tmp, edge_lev, startpt, 0, 1);
             GetResRoot(phi, phi_old, res, resmag);
             printf("At the %d cycle the mag residue is %g \n",ncycle,resmag[0]);
         }
@@ -119,17 +119,19 @@ int relax(double *phi, double *phi_old, double *res, double *tmp, int L, int sta
     return 0;
 }
 
-void v_cycle(double *phi, double *phi_old, double *res, double *tmp, int *edge_lev, int *startpt) {
+void w_cycle(double *phi, double *phi_old, double *res, double *tmp, int *edge_lev, int *startpt, int this_lev, int flag) {
     //#pragma acc data present(phi[0:SIZE*SIZE]) present(phi_old[0:SIZE*SIZE]) present(res[0:SIZE*SIZE]) present(tmp[0:(SIZE-2)*(SIZE-2)])
-    int lev;
-    for (lev = 0; lev < NLEV; lev++) {
-        relax(phi, phi_old, res, tmp, edge_lev[lev], startpt[lev]);
-        proj_res(res, phi, phi_old, tmp, edge_lev, startpt, lev);
+    if (this_lev == NLEV) {
+        relax(phi, phi_old, res, tmp, edge_lev[this_lev], startpt[this_lev]);
     }
-    for (lev = NLEV; lev >= 0; lev--) { 
-        relax(phi, phi_old, res, tmp, edge_lev[lev], startpt[lev]);
-        if (lev > 0) {
-            inter_add(phi, edge_lev, startpt, lev);
+    else {
+        relax(phi, phi_old, res, tmp, edge_lev[this_lev], startpt[this_lev]);
+        proj_res(res, phi, phi_old, tmp, edge_lev, startpt, this_lev);
+        w_cycle(phi, phi_old, res, tmp, edge_lev, startpt, this_lev+1, 0);
+        w_cycle(phi, phi_old, res, tmp, edge_lev, startpt, this_lev+1, 1);
+        inter_add(phi, edge_lev, startpt, this_lev+1);
+        if (flag != 0) {
+            relax(phi, phi_old, res, tmp, edge_lev[this_lev], startpt[this_lev]);
         }
     }
 }

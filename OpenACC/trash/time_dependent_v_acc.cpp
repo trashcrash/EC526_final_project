@@ -4,13 +4,13 @@
 #include <chrono>
 
 #define RESGOAL 1E-6
-#define NLEV 7                                      // If 0, only one level
+#define NLEV 1                                      // If 0, only one level
 #define PERIOD 100
 #define PI 3.141592653589793
 #define TSTRIDE 10
 #define N_PER_LEV 10                                // Iterate 10 times for each level
-#define EDGE 514
-#define SIZE 353648
+#define EDGE 1026
+#define SIZE 1400336
 
 static const double scale = 1.0/(4.0*TSTRIDE + 1);
 int relax(double *phi, double *phi_old, double *res, double *tmp, int L, int startpt);
@@ -20,11 +20,8 @@ void inter_add(double *phi, int *edge_lev, int *startpt, int lev);
 void GetResRoot(double *phi, double *phi_old, double *res, double *resmag);
 
 int main() {
-for (int iter = 0; iter < 10; iter++) {
     double *phi, *res, *phi_old, *tmp, *resmag;
     int *edge_lev, *startpt;
-    FILE* output;
-    output = fopen("acc_v_512_7lev.dat", "a");
     #pragma acc init
     int i;
 
@@ -87,9 +84,7 @@ for (int iter = 0; iter < 10; iter++) {
     std::chrono::duration<double> difference_in_time = end_time - begin_time;
     double difference_in_seconds = difference_in_time.count();
     printf("Time spent: %f\n", difference_in_seconds);
-    fprintf(output, "%.10f\n", difference_in_seconds);
-    fclose(output);
-}    
+    
     return 0;
 }
 
@@ -128,9 +123,9 @@ void v_cycle(double *phi, double *phi_old, double *res, double *tmp, int *edge_l
     }
     for (lev = NLEV; lev >= 0; lev--) { 
         relax(phi, phi_old, res, tmp, edge_lev[lev], startpt[lev]);
-        if (lev > 0) {
-            inter_add(phi, edge_lev, startpt, lev);
-        }
+        //if (lev > 0) {
+            //inter_add(phi, edge_lev, startpt, lev);
+        //}
     }
 }
 

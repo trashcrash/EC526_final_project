@@ -4,12 +4,13 @@
 #include <complex.h>
 #include <mpi.h>
 #include <opencv2/opencv.hpp>                       // opencv
+#include <chrono>
 
 using namespace cv;                                 // opencv
 
 #define RESGOAL 1E-6
 #define NLEV 0                                     // If 0, only one level
-#define PERIOD 500
+#define PERIOD 100
 #define PI 3.141592653589793
 #define TSTRIDE 10
 #define N_PER_LEV 10                                // Iterate 10 times for each level
@@ -52,7 +53,7 @@ int main(int argc, char** argv) {
   
 
     // Initialize parameters
-    p.Lmax = 7;
+    p.Lmax = 8;
     p.N = 2*(int)pow(2,p.Lmax)+2;
     p.m_square = 0.0;                                     // Scaling parameter, a small number
 
@@ -127,7 +128,7 @@ int main(int argc, char** argv) {
 
             t += 1;
             if(my_rank == mySourceRank)
-                res[0][0] = 3.0*TSTRIDE*p.scale*(1+sin(2.0*PI*t/(PERIOD/10)));
+                res[0][0] = 1.0*TSTRIDE*p.scale*(1+sin(2.0*PI*t/(PERIOD)));
             ncycle = 0;
             for (lev = 0; lev < p.Lmax+1; lev++) {
                 for (i = 0; i < p.localSize[lev]*p.localSize[lev]; i++) {

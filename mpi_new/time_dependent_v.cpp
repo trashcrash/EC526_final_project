@@ -5,7 +5,7 @@
 
 #define RESGOAL 1E-6
 #define NLEV 0                                      // If 0, only one level
-#define PERIOD 100
+#define PERIOD 3
 #define PI 3.141592653589793
 #define TSTRIDE 10
 #define N_PER_LEV 10                                // Iterate 10 times for each level
@@ -23,18 +23,18 @@ void relax(double *phi, double *phi_old, double *res, int lev, param p);
 void proj_res(double *res_c, double *rec_f, double *phi_f, double *phi_old_f, int lev, param p);
 void inter_add(double *phi_f, double *phi_c, int lev,param p);
 double GetResRoot(double *phi, double *phi_old, double *res, int lev, param p);
-void w_cycle(double **phi, double **phi_old, double **res, int this_lev, int order, param p);
+void v_cycle(double **phi, double **phi_old, double **res, param p);
 
-int main() {  
-for (int iter = 0; iter < 10; iter++) {
-    FILE* output;
-    output = fopen("w_256_0lev_10stride_gauss.dat", "a");
+int main() {
+for(int iter = 0; iter < 1; iter++) {  
+    //FILE* output;
+    //output = fopen("v_512_3lev_10stride.dat", "a");
     double *phi[20], *res[20], *phi_old[20];
     param p;
     int i, j, lev;
   
     // Initialize parameters
-    p.Lmax = 7;
+    p.Lmax = 8;
     p.N = 2*(int)pow(2,p.Lmax)+2;
     p.m_square = 0.0;                                     // Scaling parameter, a small number
 
@@ -44,7 +44,7 @@ for (int iter = 0; iter < 10; iter++) {
         return 0;
     }
   
-    printf("\n W cycle for %d by %d lattice with NLEV = %d out of max %d \n", p.N, p.N, NLEV, p.Lmax); 
+    printf("\n V cycle for %d by %d lattice with NLEV = %d out of max %d \n", p.N, p.N, NLEV, p.Lmax); 
   
     // Initialize arrays
     p.size[0] = p.N;
@@ -77,18 +77,23 @@ for (int iter = 0; iter < 10; iter++) {
     int t = 0;
     resmag = GetResRoot(phi[0], phi_old[0], res[0], 0, p);
     printf("At the %d cycle the mag residue is %g \n",ncycle,resmag);
+
+    std::chrono::time_point<std::chrono::steady_clock> begin_time;
+    std::chrono::time_point<std::chrono::steady_clock> end_time;
+    std::chrono::duration<double> difference_in_time;
+    double difference_in_seconds;
  
-    std::chrono::time_point<std::chrono::steady_clock> begin_time =
-    std::chrono::steady_clock::now();
     // Total time steps = PERIOD
+    begin_time = std::chrono::steady_clock::now();
     while (t < PERIOD) {
         ncycle += 1; 
-        w_cycle(phi, phi_old, res, 0, 1, p);
+        v_cycle(phi, phi_old, res, p);
         resmag = GetResRoot(phi[0], phi_old[0], res[0], 0, p);
-        printf("At the %d cycle the mag residue is %g \n",ncycle,resmag);
+        //printf("At the %d cycle the mag residue is %g \n",ncycle,resmag);
 
         // Source varies with time
         if (resmag < RESGOAL) {
+            printf("t is %d, count is %d\n",t, ncycle);
             t += 1;
             res[0][p.N/2 + (p.N/2)*p.N] = 1.0*TSTRIDE*p.scale*(1+sin(2.0*PI*t/PERIOD));
             ncycle = 0;
@@ -99,8 +104,20 @@ for (int iter = 0; iter < 10; iter++) {
             }
         }
     }
-    
+    end_time = std::chrono::steady_clock::now();
+    difference_in_time = end_time - begin_time;
+    difference_in_seconds = difference_in_time.count();
+    printf("time is %.15f\n",difference_in_seconds);
+    /*
+    std::chrono::time_point<std::chrono::steady_clock> end_time =
+    std::chrono::steady_clock::now();
+    std::chrono::duration<double> difference_in_time = end_time - begin_time;
+    double difference_in_seconds = difference_in_time.count();
+    fprintf(output, "%.10f\n", difference_in_seconds);
+    */
+
     // Write result to file
+
     /*
     for (i = 0; i < p.N; i++) {
         for (j = 0; j < p.N; j++) {
@@ -109,31 +126,34 @@ for (int iter = 0; iter < 10; iter++) {
         fprintf(output, "\n");
     }
     */
-    std::chrono::time_point<std::chrono::steady_clock> end_time =
-    std::chrono::steady_clock::now();
-    std::chrono::duration<double> difference_in_time = end_time - begin_time;
-    double difference_in_seconds = difference_in_time.count();
-    fprintf(output, "%.10f\n", difference_in_seconds);
     
-    fclose(output);
+    //fclose(output);
 }
     return 0;
 }
 
-void w_cycle(double **phi, double **phi_old, double **res, int this_lev, int order, param p) {
+void v_cycle(double **phi, double **phi_old, double **res, param p) {
 
-    // A tiny v cycle
-    if (this_lev == NLEV) {
-        relax(phi[this_lev], phi_old[this_lev], res[this_lev], this_lev, p);
+    int lev;
+    // Go down
+    for (lev = 0; lev < NLEV; lev++) {    
+
+        // Get the new phi (smooth) and use it to compute residue, then project to the coarser level
+        relax(phi[lev], phi_old[lev], res[lev], lev, p);
+
+        // Get the projected residue and use it to compute the error of the previous level, which is phi on this level (RECURSIVE). 
+        proj_res(res[lev + 1], res[lev], phi[lev], phi_old[lev], lev,p);
     }
-    else {
-        relax(phi[this_lev], phi_old[this_lev], res[this_lev], this_lev, p);
-        proj_res(res[this_lev+1], res[this_lev], phi[this_lev], phi_old[this_lev], this_lev, p);
-        w_cycle(phi, phi_old, res, this_lev+1, 0, p);
-        w_cycle(phi, phi_old, res, this_lev+1, 1, p);
-        inter_add(phi[this_lev], phi[this_lev+1], this_lev+1, p);
-        if (order != 0) {
-            relax(phi[this_lev], phi_old[this_lev], res[this_lev], this_lev, p);
+
+    // Go up
+    for (lev = NLEV; lev >= 0; lev--) { 
+        
+        // Use the newly computed res to get a new phi. 
+        relax(phi[lev], phi_old[lev], res[lev], lev, p);   // lev = NLEV -1, ... 0;
+
+        // Interpolate to the finer level. the phi on the coarse level is the error on the fine level. 
+        if (lev > 0) {
+            inter_add(phi[lev-1], phi[lev], lev, p);   // phi[lev-1] += error = P phi[lev] and set phi[lev] = 0;
         }
     }
 }
