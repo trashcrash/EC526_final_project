@@ -6,10 +6,10 @@ NAMES1 = ["v_512_0lev_10stride_gauss.dat", "v_512_1lev_10stride_gauss.dat",
              "v_512_2lev_10stride_gauss.dat", "v_512_3lev_10stride_gauss.dat", 
              "v_512_4lev_10stride_gauss.dat", "v_512_5lev_10stride_gauss.dat", 
              "v_512_6lev_10stride_gauss.dat", "v_512_7lev_10stride_gauss.dat"]
-NAMES2 = ["w_512_0lev_10stride_gauss.dat", "w_512_1lev_10stride_gauss.dat",
-             "w_512_2lev_10stride_gauss.dat", "w_512_3lev_10stride_gauss.dat", 
-             "w_512_4lev_10stride_gauss.dat", "w_512_5lev_10stride_gauss.dat", 
-             "w_512_6lev_10stride_gauss.dat", "w_512_7lev_10stride_gauss.dat"]
+NAMES2 = ["new_w_512_0lev_10stride_gauss.dat", "new_w_512_1lev_10stride_gauss.dat",
+             "new_w_512_2lev_10stride_gauss.dat", "new_w_512_3lev_10stride_gauss.dat", 
+             "new_w_512_4lev_10stride_gauss.dat", "new_w_512_5lev_10stride_gauss.dat", 
+             "new_w_512_6lev_10stride_gauss.dat", "new_w_512_7lev_10stride_gauss.dat"]
 NAMES3 = ["mpi_v_512_0lev_10stride.dat", "mpi_v_512_1lev_10stride.dat",
              "mpi_v_512_2lev_10stride.dat", "mpi_v_512_3lev_10stride.dat",
              "mpi_v_512_4lev_10stride.dat", "mpi_v_512_5lev_10stride.dat",

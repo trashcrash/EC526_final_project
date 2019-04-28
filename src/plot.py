@@ -14,10 +14,10 @@ NAMES3 = ["v_256_0lev_10stride_gauss.dat", "v_256_1lev_10stride_gauss.dat",
              "v_256_2lev_10stride_gauss.dat", "v_256_3lev_10stride_gauss.dat", 
              "v_256_4lev_10stride_gauss.dat", "v_256_5lev_10stride_gauss.dat", 
              "v_256_6lev_10stride_gauss.dat", "v_256_7lev_10stride_gauss.dat"]
-NAMES4 = ["w_256_0lev_10stride_gauss.dat", "w_256_1lev_10stride_gauss.dat",
-             "w_256_2lev_10stride_gauss.dat", "w_256_3lev_10stride_gauss.dat", 
-             "w_256_4lev_10stride_gauss.dat", "w_256_5lev_10stride_gauss.dat", 
-             "w_256_6lev_10stride_gauss.dat", "w_256_7lev_10stride_gauss.dat"]
+NAMES4 = ["new_w_256_0lev_10stride_gauss.dat", "new_w_256_1lev_10stride_gauss.dat",
+             "new_w_256_2lev_10stride_gauss.dat", "new_w_256_3lev_10stride_gauss.dat", 
+             "new_w_256_4lev_10stride_gauss.dat", "new_w_256_5lev_10stride_gauss.dat", 
+             "new_w_256_6lev_10stride_gauss.dat", "new_w_256_7lev_10stride_gauss.dat"]
 
 def readfiles(filename):
     a = zeros(10)
